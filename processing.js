@@ -160,7 +160,7 @@ module.exports = {
     // Platform IDs
     OTHER:   0,
     WINDOWS: 1,
-    MAXOSX:  2,
+    MACOSX:  2,
     LINUX:   3,
 
     EPSILON: 0.0001,
@@ -9844,7 +9844,6 @@ module.exports = function setupParser(Processing, options) {
         loopStarted = false,
         renderSmooth = false,
         doLoop = true,
-        looping = 0,
         curRectMode = PConstants.CORNER,
         curEllipseMode = PConstants.CENTER,
         normalX = 0,
@@ -13603,13 +13602,14 @@ module.exports = function setupParser(Processing, options) {
       p.pmouseY = pmouseYLastFrame;
 
       saveContext();
-      p.draw();
-      restoreContext();
+      return p.draw().then(function() {
+        restoreContext();
 
-      pmouseXLastFrame = p.mouseX;
-      pmouseYLastFrame = p.mouseY;
-      p.pmouseX = pmouseXLastEvent;
-      p.pmouseY = pmouseYLastEvent;
+        pmouseXLastFrame = p.mouseX;
+        pmouseYLastFrame = p.mouseY;
+        p.pmouseX = pmouseXLastEvent;
+        p.pmouseY = pmouseYLastEvent;
+      });
     };
 
     Drawing3D.prototype.redraw = function() {
@@ -13632,12 +13632,12 @@ module.exports = function setupParser(Processing, options) {
       p.specular(0, 0, 0);
       p.emissive(0, 0, 0);
       p.camera();
-      p.draw();
-
-      pmouseXLastFrame = p.mouseX;
-      pmouseYLastFrame = p.mouseY;
-      p.pmouseX = pmouseXLastEvent;
-      p.pmouseY = pmouseYLastEvent;
+      return p.draw().then(function() {
+        pmouseXLastFrame = p.mouseX;
+        pmouseYLastFrame = p.mouseY;
+        p.pmouseX = pmouseXLastEvent;
+        p.pmouseY = pmouseYLastEvent;
+      });
     };
 
     /**
@@ -13662,7 +13662,6 @@ module.exports = function setupParser(Processing, options) {
     p.noLoop = function() {
       doLoop = false;
       loopStarted = false;
-      clearInterval(looping);
       curSketch.onPause();
     };
 
@@ -13682,17 +13681,21 @@ module.exports = function setupParser(Processing, options) {
       timeSinceLastFPS = Date.now();
       framesSinceLastFPS = 0;
 
-      looping = window.setInterval(function() {
-        try {
-          curSketch.onFrameStart();
-          p.redraw();
-          curSketch.onFrameEnd();
-        } catch(e_loop) {
-          window.clearInterval(looping);
-          throw e_loop;
-        }
-      }, curMsPerFrame);
       doLoop = true;
+      function looping() {
+        curSketch.onFrameStart();
+        p.redraw().then(function() {
+          curSketch.onFrameEnd();
+          if (doLoop) {
+            setTimeout(looping, curMsPerFrame);
+          }
+        }).catch(function(e_loop) {
+          throw e_loop;
+        });
+      }
+
+      looping();
+
       loopStarted = true;
       curSketch.onLoop();
     };
@@ -13729,7 +13732,7 @@ module.exports = function setupParser(Processing, options) {
     */
     p.exit = function() {
       // cleanup
-      window.clearInterval(looping);
+      doLoop = false;
       removeInstance(p.externals.canvas.id);
       delete(curElement.onmousedown);
 
@@ -21567,24 +21570,29 @@ module.exports = function setupParser(Processing, options) {
           curSketch.onLoad(processing);
 
           // Run void setup()
-          if (processing.setup) {
-            processing.setup();
+          if (!processing.setup) {
+            processing.setup = function() { return Promise.resolve() };
+          }
+
+          if (!processing.draw) {
+            processing.draw = function() { return Promise.resolve() };
+          }
+
+          processing.setup().then(function() {
             // if any transforms were performed in setup reset to identity matrix
             // so draw loop is unpolluted
             processing.resetMatrix();
             curSketch.onSetup();
-          }
 
-          // some pixels can be cached, flushing
-          resetContext();
+            // some pixels can be cached, flushing
+            resetContext();
 
-          if (processing.draw) {
             if (!doLoop) {
               processing.redraw();
             } else {
               processing.loop();
             }
-          }
+          });
         } else {
           window.setTimeout(function() { executeSketch(processing); }, retryInterval);
         }
