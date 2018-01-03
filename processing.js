@@ -13687,7 +13687,7 @@ module.exports = function setupParser(Processing, options) {
         p.redraw().then(function() {
           curSketch.onFrameEnd();
           if (doLoop) {
-            setTimeout(looping, curMsPerFrame);
+            setTimeout(function() { requestAnimationFrame(looping) }, curMsPerFrame);
           }
         }).catch(function(e_loop) {
           throw e_loop;
