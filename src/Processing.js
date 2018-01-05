@@ -260,7 +260,6 @@
         loopStarted = false,
         renderSmooth = false,
         doLoop = true,
-        looping = 0,
         curRectMode = PConstants.CORNER,
         curEllipseMode = PConstants.CENTER,
         normalX = 0,
@@ -4019,13 +4018,14 @@
       p.pmouseY = pmouseYLastFrame;
 
       saveContext();
-      p.draw();
-      restoreContext();
+      return p.draw().then(function() {
+        restoreContext();
 
-      pmouseXLastFrame = p.mouseX;
-      pmouseYLastFrame = p.mouseY;
-      p.pmouseX = pmouseXLastEvent;
-      p.pmouseY = pmouseYLastEvent;
+        pmouseXLastFrame = p.mouseX;
+        pmouseYLastFrame = p.mouseY;
+        p.pmouseX = pmouseXLastEvent;
+        p.pmouseY = pmouseYLastEvent;
+      });
     };
 
     Drawing3D.prototype.redraw = function() {
@@ -4048,12 +4048,12 @@
       p.specular(0, 0, 0);
       p.emissive(0, 0, 0);
       p.camera();
-      p.draw();
-
-      pmouseXLastFrame = p.mouseX;
-      pmouseYLastFrame = p.mouseY;
-      p.pmouseX = pmouseXLastEvent;
-      p.pmouseY = pmouseYLastEvent;
+      return p.draw().then(function() {
+        pmouseXLastFrame = p.mouseX;
+        pmouseYLastFrame = p.mouseY;
+        p.pmouseX = pmouseXLastEvent;
+        p.pmouseY = pmouseYLastEvent;
+      });
     };
 
     /**
@@ -4078,7 +4078,6 @@
     p.noLoop = function() {
       doLoop = false;
       loopStarted = false;
-      clearInterval(looping);
       curSketch.onPause();
     };
 
@@ -4098,17 +4097,21 @@
       timeSinceLastFPS = Date.now();
       framesSinceLastFPS = 0;
 
-      looping = window.setInterval(function() {
-        try {
-          curSketch.onFrameStart();
-          p.redraw();
-          curSketch.onFrameEnd();
-        } catch(e_loop) {
-          window.clearInterval(looping);
-          throw e_loop;
-        }
-      }, curMsPerFrame);
       doLoop = true;
+      function looping() {
+        curSketch.onFrameStart();
+        p.redraw().then(function() {
+          curSketch.onFrameEnd();
+          if (doLoop) {
+            setTimeout(function() { requestAnimationFrame(looping) }, curMsPerFrame);
+          }
+        }).catch(function(e_loop) {
+          throw e_loop;
+        });
+      }
+
+      looping();
+
       loopStarted = true;
       curSketch.onLoop();
     };
@@ -4145,7 +4148,7 @@
     */
     p.exit = function() {
       // cleanup
-      window.clearInterval(looping);
+      doLoop = false;
       removeInstance(p.externals.canvas.id);
       delete(curElement.onmousedown);
 
@@ -11983,24 +11986,29 @@
           curSketch.onLoad(processing);
 
           // Run void setup()
-          if (processing.setup) {
-            processing.setup();
+          if (!processing.setup) {
+            processing.setup = function() { return Promise.resolve() };
+          }
+
+          if (!processing.draw) {
+            processing.draw = function() { return Promise.resolve() };
+          }
+
+          processing.setup().then(function() {
             // if any transforms were performed in setup reset to identity matrix
             // so draw loop is unpolluted
             processing.resetMatrix();
             curSketch.onSetup();
-          }
 
-          // some pixels can be cached, flushing
-          resetContext();
+            // some pixels can be cached, flushing
+            resetContext();
 
-          if (processing.draw) {
             if (!doLoop) {
               processing.redraw();
             } else {
               processing.loop();
             }
-          }
+          });
         } else {
           window.setTimeout(function() { executeSketch(processing); }, retryInterval);
         }
