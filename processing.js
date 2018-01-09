@@ -13690,7 +13690,7 @@ module.exports = function setupParser(Processing, options) {
             setTimeout(function() { requestAnimationFrame(looping) }, curMsPerFrame);
           }
         }).catch(function(e_loop) {
-          throw e_loop;
+          curSketch.onExit(e_loop);
         });
       }
 
