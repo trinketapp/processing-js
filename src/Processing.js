@@ -99,7 +99,7 @@
   /**
    * The Processing object
    */
-  var Processing = this.Processing = function(aCanvas, aCode, aFunctions) {
+  var Processing = this.Processing = function(aCanvas, aCode, aFunctions, aDoubleBufferCanvas) {
 
     if (!(this instanceof Processing)) {
       throw("called Processing constructor as if it were a function: missing 'new'.");
@@ -123,10 +123,14 @@
       Processing.debug('Unimplemented - ' + s);
     }
 
+    var doubleBuffered = aDoubleBufferCanvas !== undef && aDoubleBufferCanvas !== null;
+    var doubleBufferedCanvasContext = doubleBuffered ? aDoubleBufferCanvas.getContext('2d') : null;
+    var requestAnimationFrameWhenNeeded = doubleBuffered ? function(f) { f(); } : requestAnimationFrame;
+
     ////////////////////////////////////////////////////////////////////////////
     // JavaScript event binding and releasing
     ////////////////////////////////////////////////////////////////////////////
-	var eventHandlers = [];
+	  var eventHandlers = [];
     function attachEventHandler(elem, type, fn) {
       if (elem.addEventListener) {
         elem.addEventListener(type, fn, false);
@@ -170,7 +174,15 @@
     extend.withCommonFunctions(p);
     extend.withMath(p);
     extend.withProxyFunctions(p, removeFirstArgument);
-    extend.withTouch(p, curElement, attachEventHandler, detachEventHandlersByType, document, PConstants);
+    if (!doubleBuffered) {
+      aDoubleBufferCanvas = curElement;
+    } else {
+      if (aDoubleBufferCanvas.width !== curElement.width && aDoubleBufferCanvas.height !== curElement.height) {
+        throw 'event canvas must have same dimensions as processing canvas';
+      }
+    }
+
+    extend.withTouch(p, aDoubleBufferCanvas, attachEventHandler, detachEventHandlersByType, document, PConstants);
 
     // custom functions and properties are added here
     if(aFunctions) {
@@ -4025,6 +4037,10 @@
         pmouseYLastFrame = p.mouseY;
         p.pmouseX = pmouseXLastEvent;
         p.pmouseY = pmouseYLastEvent;
+      }).then(function() {
+        if (doubleBuffered) {
+          requestAnimationFrame(function() { doubleBufferedCanvasContext.drawImage(curElement, 0, 0); });
+        }
       });
     };
 
@@ -4053,6 +4069,10 @@
         pmouseYLastFrame = p.mouseY;
         p.pmouseX = pmouseXLastEvent;
         p.pmouseY = pmouseYLastEvent;
+      }).then(function() {
+        if (doubleBuffered) {
+            requestAnimationFrame(function() { doubleBufferedCanvasContext.drawImage(curElement, 0, 0); });
+        }
       });
     };
 
@@ -4103,7 +4123,7 @@
         p.redraw().then(function() {
           curSketch.onFrameEnd();
           if (doLoop) {
-            setTimeout(function() { requestAnimationFrame(looping) }, curMsPerFrame);
+            setTimeout(function() { requestAnimationFrameWhenNeeded(looping) }, curMsPerFrame);
           }
         }).catch(function(e_loop) {
           curSketch.onExit(e_loop);
@@ -4848,6 +4868,11 @@
 
       curElement.width = p.width = aWidth || 100;
       curElement.height = p.height = aHeight || 100;
+
+      if (doubleBuffered) {
+        aDoubleBufferCanvas.width = aWidth;
+        aDoubleBufferCanvas.height = aHeight;
+      }
 
       for (var prop in savedProperties) {
         if (savedProperties.hasOwnProperty(prop)) {
