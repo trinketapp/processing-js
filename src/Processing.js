@@ -272,6 +272,7 @@
         loopStarted = false,
         renderSmooth = false,
         doLoop = true,
+        setupFinished = false,
         curRectMode = PConstants.CORNER,
         curEllipseMode = PConstants.CENTER,
         normalX = 0,
@@ -4153,7 +4154,7 @@
       curMsPerFrame = 1000 / curFrameRate;
 
       // clear and reset interval
-      if (doLoop) {
+      if (doLoop && setupFinished) {
         p.noLoop();
         p.loop();
       }
@@ -12028,11 +12029,15 @@
             // some pixels can be cached, flushing
             resetContext();
 
+            setupFinished = true;
+
             if (!doLoop) {
               processing.redraw();
             } else {
               processing.loop();
             }
+          }).catch(function (e) {
+            curSketch.onSetup(e);
           });
         } else {
           window.setTimeout(function() { executeSketch(processing); }, retryInterval);
