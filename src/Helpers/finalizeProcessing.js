@@ -39,7 +39,8 @@ module.exports = function finalizeProcessing(Processing, options) {
     this.attachFunction = attachFunction;
     this.options = {
       pauseOnBlur: false,
-      globalKeyEvents: false
+      globalKeyEvents: false,
+      eventFilter: function() { return true }
     };
 
     /* Optional Sketch event hooks:
