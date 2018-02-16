@@ -11966,9 +11966,29 @@
       // if keyboard events should be handled globally, the listeners should
       // be bound to the document window, rather than to the current canvas
       var keyTrigger = curSketch.options.globalKeyEvents ? window : curElement;
-      attachEventHandler(keyTrigger, "keydown", handleKeydown);
-      attachEventHandler(keyTrigger, "keypress", handleKeypress);
-      attachEventHandler(keyTrigger, "keyup", handleKeyup);
+
+      // a function that takes a predicate (that takes and event and returns a
+      // boolean when the handler should be called)
+      function eventFilter(predicate) {
+        // that returns a function that takes a handler
+        return function (handler) {
+          // that returns a function that takes an event and calls the handler if
+          // the predicate called with the event returns true
+          return function (e) {
+            if (predicate(e)) {
+              return handler(e);
+            }
+
+            return true;
+          }
+        }
+      }
+
+      var filterHandler = eventFilter(curSketch.options.eventPredicate)
+
+      attachEventHandler(keyTrigger, "keydown", filterHandler(handleKeydown));
+      attachEventHandler(keyTrigger, "keypress", filterHandler(handleKeypress));
+      attachEventHandler(keyTrigger, "keyup", filterHandler(handleKeyup));
 
       // Step through the libraries that were attached at doc load...
       for (var i in Processing.lib) {
