@@ -1,5 +1,5 @@
 // runtime argument handling
-argv = require("argv"),
+argv = require("argv");
 argv.option({
     name: 'test',
     type: 'string',

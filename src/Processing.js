@@ -11,12 +11,12 @@
       XMLHttpRequest = window.XMLHttpRequest,
       document = Browser.document,
       noop = options.noop,
-
-      PConstants = defaultScope.PConstants;
+      PConstants = defaultScope.PConstants,
       PFont = defaultScope.PFont,
       PShapeSVG = defaultScope.PShapeSVG,
       PVector = defaultScope.PVector,
-      Char = Character = defaultScope.Char,
+      Char = defaultScope.Char,
+      Character = defaultScope.Char,
       ObjectIterator = defaultScope.ObjectIterator,
       XMLElement = defaultScope.XMLElement,
       XML = defaultScope.XML;
@@ -11969,7 +11969,7 @@
 
       // a function that takes a predicate (that takes and event and returns a
       // boolean when the handler should be called)
-      function eventFilter(predicate, preEventEventHandler) {
+      var eventFilter = function eventFilter(predicate, preEventHandler) {
         // that returns a function that takes a handler
         return function (handler) {
           // that returns a function that takes an event and calls the handler if
@@ -11984,7 +11984,7 @@
             return true;
           };
         };
-      }
+      };
 
       var filteredHandler = eventFilter(curSketch.options.eventPredicate, curSketch.options.preEventHandler);
 
