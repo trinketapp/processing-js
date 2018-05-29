@@ -807,7 +807,8 @@ module.exports = function finalizeProcessing(Processing, options) {
     this.options = {
       pauseOnBlur: false,
       globalKeyEvents: false,
-      eventFilter: function() { return true }
+      eventFilter: function() { return true; },
+      preEventHandler: function() {}
     };
 
     /* Optional Sketch event hooks:
@@ -9715,7 +9716,7 @@ module.exports = function setupParser(Processing, options) {
     ////////////////////////////////////////////////////////////////////////////
     // JavaScript event binding and releasing
     ////////////////////////////////////////////////////////////////////////////
-	  var eventHandlers = [];
+    var eventHandlers = [];
     function attachEventHandler(elem, type, fn) {
       if (elem.addEventListener) {
         elem.addEventListener(type, fn, false);
@@ -13709,7 +13710,7 @@ module.exports = function setupParser(Processing, options) {
         p.redraw().then(function() {
           curSketch.onFrameEnd();
           if (doLoop) {
-            setTimeout(function() { requestAnimationFrameWhenNeeded(looping) }, curMsPerFrame);
+            setTimeout(function() { requestAnimationFrameWhenNeeded(looping); }, curMsPerFrame);
           }
         }).catch(function(e_loop) {
           curSketch.onExit(e_loop);
@@ -21550,30 +21551,32 @@ module.exports = function setupParser(Processing, options) {
 
       // if keyboard events should be handled globally, the listeners should
       // be bound to the document window, rather than to the current canvas
-      var keyTrigger = curSketch.options.globalKeyEvents ? window : curElement;
+      var keyTrigger = curSketch.options.globalKeyEvents ? window : curElement; 
 
       // a function that takes a predicate (that takes and event and returns a
       // boolean when the handler should be called)
-      function eventFilter(predicate) {
+      function eventFilter(predicate, preEventEventHandler) {
         // that returns a function that takes a handler
         return function (handler) {
           // that returns a function that takes an event and calls the handler if
           // the predicate called with the event returns true
           return function (e) {
+            preEventHandler(e);
+
             if (predicate(e)) {
               return handler(e);
             }
 
             return true;
-          }
-        }
+          };
+        };
       }
 
-      var filterHandler = eventFilter(curSketch.options.eventPredicate)
+      var filteredHandler = eventFilter(curSketch.options.eventPredicate, curSketch.options.preEventHandler);
 
-      attachEventHandler(keyTrigger, "keydown", filterHandler(handleKeydown));
-      attachEventHandler(keyTrigger, "keypress", filterHandler(handleKeypress));
-      attachEventHandler(keyTrigger, "keyup", filterHandler(handleKeyup));
+      attachEventHandler(keyTrigger, "keydown", filteredHandler(handleKeydown));
+      attachEventHandler(keyTrigger, "keypress", filteredHandler(handleKeypress));
+      attachEventHandler(keyTrigger, "keyup", filteredHandler(handleKeyup));
 
       // Step through the libraries that were attached at doc load...
       for (var i in Processing.lib) {
@@ -21618,11 +21621,11 @@ module.exports = function setupParser(Processing, options) {
 
           // Run void setup()
           if (!processing.setup) {
-            processing.setup = function() { return Promise.resolve() };
+            processing.setup = function() { return Promise.resolve(); };
           }
 
           if (!processing.draw) {
-            processing.draw = function() { return Promise.resolve() };
+            processing.draw = function() { return Promise.resolve(); };
           }
 
           processing.setup().then(function() {

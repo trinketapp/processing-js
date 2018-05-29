@@ -40,7 +40,8 @@ module.exports = function finalizeProcessing(Processing, options) {
     this.options = {
       pauseOnBlur: false,
       globalKeyEvents: false,
-      eventFilter: function() { return true }
+      eventFilter: function() { return true; },
+      preEventHandler: function() {}
     };
 
     /* Optional Sketch event hooks:
