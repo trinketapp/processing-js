@@ -182,7 +182,9 @@
       }
     }
 
-    extend.withTouch(p, aDoubleBufferCanvas, attachEventHandler, detachEventHandlersByType, document, PConstants);
+    var focusElement = aCode && aCode.options && aCode.options.focusElement ? aCode.options.focusElement : aDoubleBufferCanvas;
+
+    extend.withTouch(p, aDoubleBufferCanvas, attachEventHandler, detachEventHandlersByType, document, PConstants, focusElement);
 
     // custom functions and properties are added here
     if(aFunctions) {

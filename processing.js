@@ -7511,7 +7511,7 @@ module.exports = (function commonFunctions(undef) {
 /**
  * Touch and Mouse event handling
  */
-module.exports = function withTouch(p, curElement, attachEventHandler, detachEventHandlersByType, document, PConstants, undef) {
+module.exports = function withTouch(p, curElement, attachEventHandler, detachEventHandlersByType, document, PConstants, focusElement, undef) {
 
   // List of mouse event types
   var mouseTypes = ['mouseout','mousemove','mousedown','mouseup','DOMMouseScroll','mousewheel','touchstart'];
@@ -7757,7 +7757,8 @@ module.exports = function withTouch(p, curElement, attachEventHandler, detachEve
    */
   curElement.onmousedown = function () {
     // make sure focus happens, but nothing else
-    curElement.focus();
+    var e = focusElement || curElement;
+    e.focus();
     return false;
   };
 
@@ -9767,7 +9768,9 @@ module.exports = function setupParser(Processing, options) {
       }
     }
 
-    extend.withTouch(p, aDoubleBufferCanvas, attachEventHandler, detachEventHandlersByType, document, PConstants);
+    var focusElement = aCode && aCode.options && aCode.options.focusElement ? aCode.options.focusElement : aDoubleBufferCanvas;
+
+    extend.withTouch(p, aDoubleBufferCanvas, attachEventHandler, detachEventHandlersByType, document, PConstants, focusElement);
 
     // custom functions and properties are added here
     if(aFunctions) {
